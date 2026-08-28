@@ -1,70 +1,58 @@
-// Translation Dictionary
 const i18n = {
     en: {
-        appTitle: "Schedule Builder",
-        modeDream: "Dream Schedule",
-        modeOfficial: "Official Agroupment",
-        availableClasses: "Available Classes (T & TP)",
-        bestMatchTitle: "Best Agroupment Match",
-        regCodes: "Registration Codes",
-        clearBtn: "Clear Schedule",
-        time: "Time", mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri"
+        appTitle: "Schedule Builder", selectSubject: "Select Subject:",
+        exploreTitle: "1. Explore Classes (Click + to Add)", dreamTitle: "2. Your Custom Schedule (Click - to Remove)",
+        officialTitle: "3. Official Match:", noneSelected: "None selected",
+        regCodes: "Registration Codes", copyPrompt: "Copy these on Aug 31st at 17:00:",
+        clearBtn: "Clear Entire Schedule", time: "Time",
+        w1: "W1", w2: "W2", mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri"
     },
     pt: {
-        appTitle: "Gerador de Horários",
-        modeDream: "Horário Ideal",
-        modeOfficial: "Agrupamento Oficial",
-        availableClasses: "Aulas Disponíveis (T & TP)",
-        bestMatchTitle: "Melhor Agrupamento",
-        regCodes: "Códigos de Inscrição",
-        clearBtn: "Limpar Horário",
-        time: "Hora", mon: "Seg", tue: "Ter", wed: "Qua", thu: "Qui", fri: "Sex"
+        appTitle: "Gerador de Horários", selectSubject: "Selecionar Disciplina:",
+        exploreTitle: "1. Explorar Aulas (Clique + para Adicionar)", dreamTitle: "2. O Seu Horário (Clique - para Remover)",
+        officialTitle: "3. Correspondência Oficial:", noneSelected: "Nenhum selecionado",
+        regCodes: "Códigos de Inscrição", copyPrompt: "Copie isto dia 31 de Ago. às 17:00:",
+        clearBtn: "Limpar Horário Completo", time: "Hora",
+        w1: "S1", w2: "S2", mon: "Seg", tue: "Ter", wed: "Qua", thu: "Qui", fri: "Sex"
     }
 };
 
 let currentLang = 'en';
-let viewMode = 'custom'; // 'custom' or 'official'
 
-// Updated database structure to include 'agroupment' and 'type' (T, TP)
+// DB updated with week property ('1', '2', or 'both') and Lab/Practical types
 const databaseJson = [
-    { id: 'MATH-T1', subject: 'Math', agroupment: 'A112', code: '1001', day: 1, start: 10, end: 12, type: 'T' },
-    { id: 'MATH-TP1', subject: 'Math', agroupment: 'A112', code: '1001', day: 2, start: 14, end: 16, type: 'TP' },
-    { id: 'MATH-T2', subject: 'Math', agroupment: 'B224', code: '1002', day: 3, start: 9, end: 11, type: 'T' },
-    { id: 'MATH-TP2', subject: 'Math', agroupment: 'B224', code: '1002', day: 4, start: 10, end: 12, type: 'TP' }
+    { id: 'MATH-T1', subject: 'Math', agroupment: 'A112', day: 1, start: 10, end: 12, type: 'T', classroom: 'Sala B3', week: 'both' },
+    { id: 'MATH-TP1', subject: 'Math', agroupment: 'A112', day: 2, start: 14, end: 16, type: 'TP', classroom: 'Anf. 1', week: 'both' },
+    { id: 'MATH-L1-W1', subject: 'Math', agroupment: 'A112', day: 3, start: 14, end: 16, type: 'L', classroom: 'Lab 4', week: '1' },
+    { id: 'MATH-L1-W2', subject: 'Math', agroupment: 'A112', day: 5, start: 9, end: 11, type: 'L', classroom: 'Lab 4', week: '2' },
+    { id: 'MATH-T2', subject: 'Math', agroupment: 'B224', day: 3, start: 9, end: 11, type: 'T', classroom: 'Sala B4', week: 'both' },
+    { id: 'PHYS-T1', subject: 'Physics', agroupment: 'A112', day: 4, start: 10, end: 12, type: 'T', classroom: 'Anf. 2', week: 'both' },
+    { id: 'PHYS-P1', subject: 'Physics', agroupment: 'A112', day: 1, start: 16, end: 18, type: 'P', classroom: 'Lab 1', week: '1' }
 ];
 
 let selectedClasses = [];
+let activeSubject = '';
 
 document.addEventListener('DOMContentLoaded', () => {
-    generateTimeSlots();
-    renderClassList();
+    populateSubjectDropdown();
+    initCalendars();
+    setLanguage('en');
     setupEventListeners();
-    updateUI();
+    updateAll();
 });
 
 function setupEventListeners() {
-    // Language Switcher
     document.getElementById('lang-en').addEventListener('click', () => setLanguage('en'));
     document.getElementById('lang-pt').addEventListener('click', () => setLanguage('pt'));
 
-    // Mode Switcher
-    document.getElementById('mode-custom').addEventListener('click', (e) => {
-        viewMode = 'custom';
-        document.getElementById('mode-custom').classList.add('active');
-        document.getElementById('mode-official').classList.remove('active');
-        updateUI();
-    });
-
-    document.getElementById('mode-official').addEventListener('click', (e) => {
-        viewMode = 'official';
-        document.getElementById('mode-official').classList.add('active');
-        document.getElementById('mode-custom').classList.remove('active');
-        updateUI();
+    document.getElementById('subject-dropdown').addEventListener('change', (e) => {
+        activeSubject = e.target.value;
+        updateAll();
     });
 
     document.getElementById('clear-btn').addEventListener('click', () => {
         selectedClasses = [];
-        updateUI();
+        updateAll();
     });
 }
 
@@ -77,104 +65,160 @@ function setLanguage(lang) {
         const key = el.getAttribute('data-i18n');
         if (i18n[lang][key]) el.innerText = i18n[lang][key];
     });
+    
+    // Rebuild calendar grid headers to update day labels
+    initCalendars();
+    updateAll();
 }
 
-function renderClassList() {
-    const classList = document.getElementById('class-list');
-    classList.innerHTML = '';
-
-    databaseJson.forEach(cls => {
-        const div = document.createElement('div');
-        div.className = 'class-item';
-        div.innerHTML = `<strong>${cls.subject} (${cls.type})</strong><br>Agroupment: ${cls.agroupment}<br>${getDayName(cls.day)} ${cls.start}:00 - ${cls.end}:00`;
-        
-        div.addEventListener('click', () => {
-            if (!selectedClasses.find(c => c.id === cls.id)) {
-                selectedClasses.push(cls);
-                updateUI();
-            }
-        });
-        
-        classList.appendChild(div);
+function populateSubjectDropdown() {
+    const subjects = [...new Set(databaseJson.map(c => c.subject))];
+    const dropdown = document.getElementById('subject-dropdown');
+    dropdown.innerHTML = '';
+    
+    subjects.forEach((sub, index) => {
+        if (index === 0) activeSubject = sub;
+        const opt = document.createElement('option');
+        opt.value = sub;
+        opt.innerText = sub;
+        dropdown.appendChild(opt);
     });
 }
 
-function calculateBestAgroupment() {
-    if (selectedClasses.length === 0) return null;
+// 11 Column setup: 1 Time + 5 days W1 + 5 days W2
+function initCalendars() {
+    ['calendar-explore', 'calendar-dream', 'calendar-official'].forEach(id => {
+        const cal = document.getElementById(id);
+        cal.innerHTML = '';
+        
+        // Build Headers
+        const days = currentLang === 'en' ? ['mon', 'tue', 'wed', 'thu', 'fri'] : ['mon', 'tue', 'wed', 'thu', 'fri'];
+        const w1Label = i18n[currentLang].w1;
+        const w2Label = i18n[currentLang].w2;
+
+        cal.innerHTML += `<div class="header time-col">${i18n[currentLang].time}</div>`;
+        
+        // Week 1 headers (cols 2-6)
+        days.forEach(d => cal.innerHTML += `<div class="header">${w1Label} ${i18n[currentLang][d]}</div>`);
+        // Week 2 headers (cols 7-11)
+        days.forEach(d => cal.innerHTML += `<div class="header">${w2Label} ${i18n[currentLang][d]}</div>`);
+
+        // Build Time Slots
+        for (let i = 8; i <= 20; i++) {
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'time-slot';
+            timeDiv.style.gridRow = i - 6; 
+            timeDiv.style.gridColumn = 1;
+            timeDiv.innerText = `${i}:00`;
+            cal.appendChild(timeDiv);
+        }
+    });
+}
+
+function updateAll() {
+    renderExploreCalendar();
+    renderDreamCalendar();
+    updateOfficialSection();
+}
+
+// Renders a class block on a specific calendar
+function renderBlock(cls, calendarId, actionType) {
+    const cal = document.getElementById(calendarId);
+    const rowStart = cls.start - 6;
+    const rowEnd = cls.end - 6;
+
+    // Helper to create and append the DOM element
+    const createNode = (weekOffset) => {
+        const block = document.createElement('div');
+        block.className = `class-block ${cls.type}`;
+        block.style.gridColumn = cls.day + 1 + weekOffset; // +1 to skip Time col. W2 offset is +5
+        block.style.gridRow = `${rowStart} / ${rowEnd}`;
+        
+        block.innerHTML = `
+            <strong>${cls.subject} (${cls.type})</strong><br>${cls.agroupment}
+            <div class="classroom-badge-calendar">${cls.classroom}</div>
+        `;
+
+        if (actionType === 'add') {
+            const btn = document.createElement('button');
+            btn.className = 'action-btn btn-add';
+            btn.innerText = '+';
+            btn.onclick = () => {
+                if (!selectedClasses.find(c => c.id === cls.id)) {
+                    selectedClasses.push(cls);
+                    updateAll();
+                }
+            };
+            block.appendChild(btn);
+        } else if (actionType === 'remove') {
+            const btn = document.createElement('button');
+            btn.className = 'action-btn btn-remove';
+            btn.innerText = '-';
+            btn.onclick = () => {
+                selectedClasses = selectedClasses.filter(c => c.id !== cls.id);
+                updateAll();
+            };
+            block.appendChild(btn);
+        }
+        cal.appendChild(block);
+    };
+
+    if (cls.week === 'both' || cls.week === '1') createNode(0); // Week 1 (Cols 2-6)
+    if (cls.week === 'both' || cls.week === '2') createNode(5); // Week 2 (Cols 7-11)
+}
+
+function renderExploreCalendar() {
+    // Clear old blocks
+    document.querySelectorAll('#calendar-explore .class-block').forEach(e => e.remove());
     
-    // Count how many selected classes belong to each agroupment
+    // Only show classes for selected subject that ARE NOT already added
+    const available = databaseJson.filter(c => c.subject === activeSubject && !selectedClasses.find(s => s.id === c.id));
+    available.forEach(cls => renderBlock(cls, 'calendar-explore', 'add'));
+}
+
+function renderDreamCalendar() {
+    document.querySelectorAll('#calendar-dream .class-block').forEach(e => e.remove());
+    selectedClasses.forEach(cls => renderBlock(cls, 'calendar-dream', 'remove'));
+}
+
+function updateOfficialSection() {
+    document.querySelectorAll('#calendar-official .class-block').forEach(e => e.remove());
+    
+    if (selectedClasses.length === 0) {
+        document.getElementById('match-result').innerText = i18n[currentLang].noneSelected;
+        document.getElementById('checkout-codes').value = '';
+        return;
+    }
+
+    // Determine Best Agroupment (highest frequency in Dream Schedule)
     const counts = {};
     selectedClasses.forEach(cls => {
         counts[cls.agroupment] = (counts[cls.agroupment] || 0) + 1;
     });
+    const bestMatch = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+    document.getElementById('match-result').innerText = bestMatch;
 
-    // Find the agroupment with the highest count
-    return Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
-}
+    // Render Official Calendar
+    const officialClasses = databaseJson.filter(c => c.agroupment === bestMatch);
+    officialClasses.forEach(cls => renderBlock(cls, 'calendar-official', 'none'));
 
-function updateUI() {
-    const bestMatch = calculateBestAgroupment();
-    document.getElementById('match-result').innerText = bestMatch ? bestMatch : (currentLang === 'en' ? 'None selected' : 'Nenhum selecionado');
+    // Format Checkout Text: L -> P -> TP -> T
+    const typeOrder = { 'L': 1, 'P': 2, 'TP': 3, 'T': 4 };
     
-    renderCalendarBlocks(bestMatch);
+    const uniqueOfficial = [];
+    const seen = new Set();
     
-    // Update checkout codes based on the best matched official agroupment, not the custom ones
-    const textarea = document.getElementById('checkout-codes');
-    if (bestMatch) {
-        const officialClasses = databaseJson.filter(c => c.agroupment === bestMatch);
-        const codes = [...new Set(officialClasses.map(c => c.code))];
-        textarea.value = codes.join('\n');
-    } else {
-        textarea.value = '';
-    }
-}
-
-function renderCalendarBlocks(bestMatch) {
-    document.querySelectorAll('.class-block').forEach(e => e.remove());
-    const calendar = document.getElementById('calendar');
-    
-    // Decide what to render based on the toggle
-    let classesToRender = [];
-    if (viewMode === 'custom') {
-        classesToRender = selectedClasses;
-    } else if (viewMode === 'official' && bestMatch) {
-        classesToRender = databaseJson.filter(c => c.agroupment === bestMatch);
-    }
-
-    classesToRender.forEach(cls => {
-        const block = document.createElement('div');
-        block.className = `class-block ${cls.type}`;
-        block.style.gridColumn = cls.day + 1;
-        
-        const rowStart = cls.start - 6;
-        const rowEnd = cls.end - 6;
-        block.style.gridRow = `${rowStart} / ${rowEnd}`;
-        
-        block.innerHTML = `<strong>${cls.subject} (${cls.type})</strong><br>${cls.agroupment}`;
-        
-        if (viewMode === 'custom') {
-            block.addEventListener('click', () => {
-                selectedClasses = selectedClasses.filter(c => c.id !== cls.id);
-                updateUI();
-            });
+    // Filter duplicates (e.g. if a class runs twice a week, we only need one code line for it)
+    officialClasses.forEach(cls => {
+        const identifier = `${cls.subject}-${cls.type}-${cls.agroupment}`;
+        if (!seen.has(identifier)) {
+            seen.add(identifier);
+            uniqueOfficial.push(cls);
         }
-        calendar.appendChild(block);
     });
-}
 
-function generateTimeSlots() {
-    const calendar = document.getElementById('calendar');
-    for (let i = 8; i <= 20; i++) {
-        const timeDiv = document.createElement('div');
-        timeDiv.className = 'time-slot';
-        timeDiv.style.gridRow = i - 6; 
-        timeDiv.style.gridColumn = 1;
-        timeDiv.innerText = `${i}:00`;
-        calendar.appendChild(timeDiv);
-    }
-}
+    uniqueOfficial.sort((a, b) => typeOrder[a.type] - typeOrder[b.type]);
 
-function getDayName(dayIndex) {
-    const days = currentLang === 'en' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] : ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
-    return days[dayIndex - 1];
+    const formattedCodes = uniqueOfficial.map(cls => `${cls.subject} (${cls.type}): ${cls.agroupment}`);
+    document.getElementById('checkout-codes').value = formattedCodes.join('\n');
 }
