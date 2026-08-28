@@ -327,7 +327,6 @@ const rawDatabaseJson = [
     { subject: 'SD2', agroupment: 'LEEC2101001', day: 2, start: 17, end: 19, type: 'T', classroom: 'GA4', week: 'both' }
 ];
 
-// Automatically merge identical blocks that share the exact same time/room/type/week
 function processDatabase(raw) {
     const map = {};
     raw.forEach(item => {
@@ -418,21 +417,38 @@ function initCalendars() {
         const w1Label = i18n[currentLang].w1;
         const w2Label = i18n[currentLang].w2;
 
-        cal.innerHTML += `<div class="header time-col">${i18n[currentLang].time}</div>`;
-        
-        days.forEach(d => cal.innerHTML += `<div class="header">${w1Label} ${i18n[currentLang][d]}</div>`);
-        days.forEach(d => cal.innerHTML += `<div class="header">${w2Label} ${i18n[currentLang][d]}</div>`);
+        // Explicit Header Grid Placement (Row 1)
+        cal.appendChild(createHeaderCell(i18n[currentLang].time, 1, 1));
+        days.forEach((d, idx) => {
+            cal.appendChild(createHeaderCell(`${w1Label} ${i18n[currentLang][d]}`, 1, idx + 2));
+        });
+        days.forEach((d, idx) => {
+            cal.appendChild(createHeaderCell(`${w2Label} ${i18n[currentLang][d]}`, 1, idx + 7));
+        });
 
-        for (let i = 8; i <= 23; i++) {
+        // Time Slots from 6:00 AM to 10:00 PM (Hours 6 to 22)
+        for (let i = 6; i <= 22; i++) {
+            const rowIdx = (i - 6) * 2 + 2;
             const timeDiv = document.createElement('div');
             timeDiv.className = 'time-slot';
-            timeDiv.style.gridRow = (i - 7) * 2 - 1;
+            timeDiv.style.gridRow = `${rowIdx} / span 2`;
             timeDiv.style.gridColumn = 1;
-            timeDiv.style.gridRowSpan = 2;
-            timeDiv.innerText = `${i}:00`;
+            
+            const hour12 = i === 0 ? 12 : i > 12 ? i - 12 : i;
+            const ampm = i >= 12 ? 'PM' : 'AM';
+            timeDiv.innerText = `${hour12}:00 ${ampm}`;
             cal.appendChild(timeDiv);
         }
     });
+}
+
+function createHeaderCell(text, row, col) {
+    const div = document.createElement('div');
+    div.className = 'header';
+    div.style.gridRow = row;
+    div.style.gridColumn = col;
+    div.innerText = text;
+    return div;
 }
 
 function updateAll() {
@@ -445,12 +461,10 @@ function getExploreClasses() {
     return databaseJson.filter(c => activeSubjects.has(c.subject) && !selectedClasses.find(s => s.id === c.id));
 }
 
-// Side-by-side overlap interval partitioning layout engine
 function renderCalendarGrid(classes, calendarId, actionType) {
     const cal = document.getElementById(calendarId);
     cal.querySelectorAll('.class-block').forEach(e => e.remove());
 
-    // Columns 1 to 5 = Week 1 Days (Mon-Fri), Columns 6 to 10 = Week 2 Days (Mon-Fri)
     const columns = {};
     for (let c = 1; c <= 10; c++) columns[c] = [];
 
@@ -467,7 +481,6 @@ function renderCalendarGrid(classes, calendarId, actionType) {
         const list = columns[colKey];
         if (list.length === 0) return;
 
-        // Sort by start time, then duration descending
         list.sort((a, b) => {
             if (a.cls.start !== b.cls.start) return a.cls.start - b.cls.start;
             return (b.cls.end - b.cls.start) - (a.cls.end - a.cls.start);
@@ -500,15 +513,16 @@ function renderCalendarGrid(classes, calendarId, actionType) {
 
 function renderSingleBlock(cls, calendarId, actionType, weekOffset, subCol, totalCols) {
     const cal = document.getElementById(calendarId);
-    const rowStart = Math.round((cls.start - 8) * 2) + 1;
-    const rowEnd = Math.round((cls.end - 8) * 2) + 1;
+    
+    // Calculated based on 6:00 AM start time base (Row 2 is 6:00 AM)
+    const rowStart = Math.round((cls.start - 6) * 2) + 2;
+    const rowEnd = Math.round((cls.end - 6) * 2) + 2;
 
     const block = document.createElement('div');
     block.className = `class-block ${cls.type}`;
     block.style.gridColumn = cls.day + 1 + weekOffset;
     block.style.gridRow = `${rowStart} / ${rowEnd}`;
     
-    // Side-by-side proportional splitting within the calendar column
     const widthPct = 100 / totalCols;
     const leftPct = subCol * widthPct;
     block.style.width = `calc(${widthPct}% - 2px)`;
@@ -608,11 +622,9 @@ function updateOfficialSection() {
     const matchText = Object.entries(bestMatches).map(([sub, ag]) => `${sub}: ${ag}`).join(' | ');
     document.getElementById('match-result').innerText = matchText;
 
-    // Filter database for official matching classes containing the winning agroupment
     const officialClasses = databaseJson.filter(c => bestMatches[c.subject] && c.agroupments.includes(bestMatches[c.subject]));
     renderCalendarGrid(officialClasses, 'calendar-official', 'none');
 
-    // Format Checkout Text: L -> P -> TP -> T
     const typeOrder = { 'L': 1, 'P': 2, 'TP': 3, 'T': 4 };
     const uniqueOfficial = [];
     const seen = new Set();
