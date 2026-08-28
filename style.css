@@ -1,3 +1,65 @@
+/* Add to top of style.css */
+.top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px 15px 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+}
+
+.brand {
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.lang-switcher span {
+    cursor: pointer;
+    color: #666;
+    transition: color 0.2s;
+}
+
+.lang-switcher span.active {
+    font-weight: bold;
+    color: #000;
+}
+
+.lang-switcher span:hover {
+    color: #000;
+}
+
+.mode-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.mode-selector button {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    background: #f8f9fa;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.mode-selector button.active {
+    background: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+.match-highlight {
+    font-weight: bold;
+    color: #198754;
+    font-size: 1.1rem;
+    margin: 5px 0 15px 0;
+}
+
+/* Adjust class block colors for T vs TP */
+.class-block.T { background-color: #0d6efd; }
+.class-block.TP { background-color: #6f42c1; }
+
 * {
     box-sizing: border-box;
     font-family: system-ui, -apple-system, sans-serif;
