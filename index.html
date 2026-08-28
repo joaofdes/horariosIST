@@ -1,1 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uni Schedule Builder</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Available Classes</h2>
+            <div id="class-list" class="class-list">
+                </div>
 
+            <div class="checkout-section">
+                <h2>Registration Codes</h2>
+                <p>Copy these on Aug 31st at 17:00:</p>
+                <textarea id="checkout-codes" readonly rows="5" placeholder="Select classes to generate codes..."></textarea>
+                <button id="clear-btn">Clear Schedule</button>
+            </div>
+        </aside>
+
+        <main class="calendar-container">
+            <div class="calendar" id="calendar">
+                <div class="header time-col">Time</div>
+                <div class="header">Mon</div>
+                <div class="header">Tue</div>
+                <div class="header">Wed</div>
+                <div class="header">Thu</div>
+                <div class="header">Fri</div>
+                
+                </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
