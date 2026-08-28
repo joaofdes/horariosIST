@@ -29,14 +29,14 @@ body { margin: 0; padding: 0 20px 20px 20px; background-color: #f4f4f9; color: #
 
 .calendar {
     display: grid;
-    grid-template-columns: 50px repeat(10, minmax(130px, 1fr));
-    grid-template-rows: 40px repeat(30, minmax(25px, 1fr));
-    gap: 1px; background: #e0e0e0; border: 1px solid #e0e0e0; min-width: 1350px;
+    grid-template-columns: 85px repeat(10, minmax(130px, 1fr));
+    grid-template-rows: 40px repeat(32, minmax(26px, 1fr));
+    gap: 1px; background: #e0e0e0; border: 1px solid #e0e0e0; min-width: 1400px;
 }
 
 .calendar > div { background: white; padding: 2px; }
 .header { background: #f8f9fa !important; font-weight: bold; text-align: center; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
-.time-slot { text-align: right; padding-right: 5px !important; font-size: 0.75em; color: #666; border-right: 1px solid #eee; display: flex; align-items: center; justify-content: flex-end; }
+.time-slot { text-align: right; padding-right: 8px !important; font-size: 0.75em; color: #666; border-right: 1px solid #eee; display: flex; align-items: center; justify-content: flex-end; background: #fcfcfc !important; }
 
 .class-block {
     position: relative; padding: 4px; border-radius: 4px;
