@@ -5,8 +5,19 @@ body { margin: 0; padding: 0 20px 20px 20px; background-color: #f4f4f9; color: #
     display: flex; justify-content: space-between; align-items: center;
     padding: 15px 0; border-bottom: 2px solid #ddd; margin-bottom: 20px;
 }
-.brand { font-weight: bold; font-size: 1.2rem; }
-.subject-selector select { padding: 5px 10px; font-size: 1rem; margin-left: 10px; }
+.brand { font-weight: bold; font-size: 1.2rem; white-space: nowrap; }
+
+/* New Subject Flags Styling */
+.subject-selector { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 20px; flex-grow: 1; }
+.subject-flag {
+    padding: 6px 14px; border-radius: 20px; font-weight: bold; cursor: pointer;
+    background: #e9ecef; color: #6c757d; border: 2px solid transparent;
+    user-select: none; transition: all 0.2s; font-size: 0.9rem;
+}
+.subject-flag.active { background: #e7f1ff; color: #0d6efd; border-color: #0d6efd; }
+.subject-flag:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+.lang-switcher { white-space: nowrap; }
 .lang-switcher span { cursor: pointer; color: #666; }
 .lang-switcher span.active { font-weight: bold; color: #000; }
 
@@ -33,11 +44,16 @@ body { margin: 0; padding: 0 20px 20px 20px; background-color: #f4f4f9; color: #
 .class-block {
     position: relative; margin: 1px; padding: 5px; border-radius: 4px;
     font-size: 0.75em; color: white; overflow: hidden; z-index: 10;
+    transition: z-index 0.2s, opacity 0.2s;
 }
 .class-block.T { background-color: #0d6efd; }
 .class-block.TP { background-color: #6f42c1; }
 .class-block.P { background-color: #fd7e14; }
 .class-block.L { background-color: #198754; }
+
+/* Allow seeing overlapped classes in the Explore calendar */
+#calendar-explore .class-block { opacity: 0.85; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+#calendar-explore .class-block:hover { opacity: 1; z-index: 100; transform: scale(1.02); }
 
 .classroom-badge-calendar {
     position: absolute; bottom: 2px; left: 2px;
