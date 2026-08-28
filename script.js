@@ -1,6 +1,6 @@
 const i18n = {
     en: {
-        appTitle: "Schedule Builder", selectSubject: "Select Subject:",
+        appTitle: "Schedule Builder",
         exploreTitle: "1. Explore Classes (Click + to Add)", dreamTitle: "2. Your Custom Schedule (Click - to Remove)",
         officialTitle: "3. Official Match:", noneSelected: "None selected",
         regCodes: "Registration Codes", copyPrompt: "Copy these on Aug 31st at 17:00:",
@@ -8,7 +8,7 @@ const i18n = {
         w1: "W1", w2: "W2", mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri"
     },
     pt: {
-        appTitle: "Gerador de Horários", selectSubject: "Selecionar Disciplina:",
+        appTitle: "Gerador de Horários",
         exploreTitle: "1. Explorar Aulas (Clique + para Adicionar)", dreamTitle: "2. O Seu Horário (Clique - para Remover)",
         officialTitle: "3. Correspondência Oficial:", noneSelected: "Nenhum selecionado",
         regCodes: "Códigos de Inscrição", copyPrompt: "Copie isto dia 31 de Ago. às 17:00:",
@@ -19,7 +19,6 @@ const i18n = {
 
 let currentLang = 'en';
 
-// DB updated with week property ('1', '2', or 'both') and Lab/Practical types
 const databaseJson = [
     { id: 'MATH-T1', subject: 'Math', agroupment: 'A112', day: 1, start: 10, end: 12, type: 'T', classroom: 'Sala B3', week: 'both' },
     { id: 'MATH-TP1', subject: 'Math', agroupment: 'A112', day: 2, start: 14, end: 16, type: 'TP', classroom: 'Anf. 1', week: 'both' },
@@ -31,10 +30,10 @@ const databaseJson = [
 ];
 
 let selectedClasses = [];
-let activeSubject = '';
+let activeSubjects = new Set();
 
 document.addEventListener('DOMContentLoaded', () => {
-    populateSubjectDropdown();
+    populateSubjectFlags();
     initCalendars();
     setLanguage('en');
     setupEventListeners();
@@ -44,11 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
     document.getElementById('lang-en').addEventListener('click', () => setLanguage('en'));
     document.getElementById('lang-pt').addEventListener('click', () => setLanguage('pt'));
-
-    document.getElementById('subject-dropdown').addEventListener('change', (e) => {
-        activeSubject = e.target.value;
-        updateAll();
-    });
 
     document.getElementById('clear-btn').addEventListener('click', () => {
         selectedClasses = [];
@@ -66,44 +60,51 @@ function setLanguage(lang) {
         if (i18n[lang][key]) el.innerText = i18n[lang][key];
     });
     
-    // Rebuild calendar grid headers to update day labels
     initCalendars();
     updateAll();
 }
 
-function populateSubjectDropdown() {
+function populateSubjectFlags() {
     const subjects = [...new Set(databaseJson.map(c => c.subject))];
-    const dropdown = document.getElementById('subject-dropdown');
-    dropdown.innerHTML = '';
+    const container = document.getElementById('subject-flags');
+    container.innerHTML = '';
     
     subjects.forEach((sub, index) => {
-        if (index === 0) activeSubject = sub;
-        const opt = document.createElement('option');
-        opt.value = sub;
-        opt.innerText = sub;
-        dropdown.appendChild(opt);
+        // Default the first subject to active
+        if (index === 0) activeSubjects.add(sub);
+        
+        const flag = document.createElement('div');
+        flag.className = 'subject-flag';
+        flag.innerText = sub;
+        flag.classList.toggle('active', activeSubjects.has(sub));
+        
+        flag.onclick = () => {
+            if (activeSubjects.has(sub)) {
+                activeSubjects.delete(sub);
+            } else {
+                activeSubjects.add(sub);
+            }
+            flag.classList.toggle('active', activeSubjects.has(sub));
+            updateAll();
+        };
+        container.appendChild(flag);
     });
 }
 
-// 11 Column setup: 1 Time + 5 days W1 + 5 days W2
 function initCalendars() {
     ['calendar-explore', 'calendar-dream', 'calendar-official'].forEach(id => {
         const cal = document.getElementById(id);
         cal.innerHTML = '';
         
-        // Build Headers
         const days = currentLang === 'en' ? ['mon', 'tue', 'wed', 'thu', 'fri'] : ['mon', 'tue', 'wed', 'thu', 'fri'];
         const w1Label = i18n[currentLang].w1;
         const w2Label = i18n[currentLang].w2;
 
         cal.innerHTML += `<div class="header time-col">${i18n[currentLang].time}</div>`;
         
-        // Week 1 headers (cols 2-6)
         days.forEach(d => cal.innerHTML += `<div class="header">${w1Label} ${i18n[currentLang][d]}</div>`);
-        // Week 2 headers (cols 7-11)
         days.forEach(d => cal.innerHTML += `<div class="header">${w2Label} ${i18n[currentLang][d]}</div>`);
 
-        // Build Time Slots
         for (let i = 8; i <= 20; i++) {
             const timeDiv = document.createElement('div');
             timeDiv.className = 'time-slot';
@@ -121,17 +122,15 @@ function updateAll() {
     updateOfficialSection();
 }
 
-// Renders a class block on a specific calendar
 function renderBlock(cls, calendarId, actionType) {
     const cal = document.getElementById(calendarId);
     const rowStart = cls.start - 6;
     const rowEnd = cls.end - 6;
 
-    // Helper to create and append the DOM element
     const createNode = (weekOffset) => {
         const block = document.createElement('div');
         block.className = `class-block ${cls.type}`;
-        block.style.gridColumn = cls.day + 1 + weekOffset; // +1 to skip Time col. W2 offset is +5
+        block.style.gridColumn = cls.day + 1 + weekOffset;
         block.style.gridRow = `${rowStart} / ${rowEnd}`;
         
         block.innerHTML = `
@@ -163,16 +162,15 @@ function renderBlock(cls, calendarId, actionType) {
         cal.appendChild(block);
     };
 
-    if (cls.week === 'both' || cls.week === '1') createNode(0); // Week 1 (Cols 2-6)
-    if (cls.week === 'both' || cls.week === '2') createNode(5); // Week 2 (Cols 7-11)
+    if (cls.week === 'both' || cls.week === '1') createNode(0);
+    if (cls.week === 'both' || cls.week === '2') createNode(5);
 }
 
 function renderExploreCalendar() {
-    // Clear old blocks
     document.querySelectorAll('#calendar-explore .class-block').forEach(e => e.remove());
     
-    // Only show classes for selected subject that ARE NOT already added
-    const available = databaseJson.filter(c => c.subject === activeSubject && !selectedClasses.find(s => s.id === c.id));
+    // Renders overlapping classes for ALL active flags
+    const available = databaseJson.filter(c => activeSubjects.has(c.subject) && !selectedClasses.find(s => s.id === c.id));
     available.forEach(cls => renderBlock(cls, 'calendar-explore', 'add'));
 }
 
@@ -190,25 +188,61 @@ function updateOfficialSection() {
         return;
     }
 
-    // Determine Best Agroupment (highest frequency in Dream Schedule)
-    const counts = {};
-    selectedClasses.forEach(cls => {
-        counts[cls.agroupment] = (counts[cls.agroupment] || 0) + 1;
-    });
-    const bestMatch = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
-    document.getElementById('match-result').innerText = bestMatch;
+    const bestMatches = {};
+    const subjectsInDream = [...new Set(selectedClasses.map(c => c.subject))];
 
-    // Render Official Calendar
-    const officialClasses = databaseJson.filter(c => c.agroupment === bestMatch);
+    // Calculate Best Agroupment PER SUBJECT
+    subjectsInDream.forEach(sub => {
+        const subClasses = selectedClasses.filter(c => c.subject === sub);
+        const counts = {};
+        
+        subClasses.forEach(cls => {
+            counts[cls.agroupment] = (counts[cls.agroupment] || 0) + 1;
+        });
+
+        let maxCount = 0;
+        for (let ag in counts) {
+            if (counts[ag] > maxCount) maxCount = counts[ag];
+        }
+
+        const tiedAgroupments = Object.keys(counts).filter(ag => counts[ag] === maxCount);
+
+        if (tiedAgroupments.length === 1) {
+            bestMatches[sub] = tiedAgroupments[0];
+        } else {
+            // TIE-BREAKER: Find the earliest selected class among the tied agroupments
+            let earliestAgroupment = tiedAgroupments[0];
+            let earliestTimeValue = Infinity;
+
+            subClasses.forEach(cls => {
+                if (tiedAgroupments.includes(cls.agroupment)) {
+                    // Score formula: Week 2 is +1000, Days are +100s, Hours are 1s. Lower score = earlier class.
+                    let weekScore = cls.week === '2' ? 1000 : 0;
+                    let timeValue = weekScore + (cls.day * 100) + cls.start;
+                    
+                    if (timeValue < earliestTimeValue) {
+                        earliestTimeValue = timeValue;
+                        earliestAgroupment = cls.agroupment;
+                    }
+                }
+            });
+            bestMatches[sub] = earliestAgroupment;
+        }
+    });
+
+    // Display match results text
+    const matchText = Object.entries(bestMatches).map(([sub, ag]) => `${sub}: ${ag}`).join(' | ');
+    document.getElementById('match-result').innerText = matchText;
+
+    // Render Official Calendar with all classes from the winning agroupments
+    const officialClasses = databaseJson.filter(c => bestMatches[c.subject] === c.agroupment);
     officialClasses.forEach(cls => renderBlock(cls, 'calendar-official', 'none'));
 
     // Format Checkout Text: L -> P -> TP -> T
     const typeOrder = { 'L': 1, 'P': 2, 'TP': 3, 'T': 4 };
-    
     const uniqueOfficial = [];
     const seen = new Set();
     
-    // Filter duplicates (e.g. if a class runs twice a week, we only need one code line for it)
     officialClasses.forEach(cls => {
         const identifier = `${cls.subject}-${cls.type}-${cls.agroupment}`;
         if (!seen.has(identifier)) {
@@ -218,7 +252,6 @@ function updateOfficialSection() {
     });
 
     uniqueOfficial.sort((a, b) => typeOrder[a.type] - typeOrder[b.type]);
-
     const formattedCodes = uniqueOfficial.map(cls => `${cls.subject} (${cls.type}): ${cls.agroupment}`);
     document.getElementById('checkout-codes').value = formattedCodes.join('\n');
 }
